@@ -1,0 +1,70 @@
+---
+title: "Creating an animation using R"
+author: "Ramon Prat"
+date: "September 20, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The Problem
+A straight stick is broken at random in two places chosen independently and uniformly along the length of the stick. What is the probability that the pieces can be arranged to form a triangle?
+
+## The Montecarlo approach
+1. Generate 2 random points from a uniform distribution between 0 & 1
+2. Check whether the 2 two values obtained satisfy conditions (a)-(d); if yes give 1 to that pair otherwise give 0
+3. Compute the cumulative empirical probability 
+4. Repeat the above steps multiple times (in this case 1000 times)
+
+```{r}
+suppressPackageStartupMessages(require(ggplot2))
+set.seed(2016)
+index_Score <- function(){
+  # Picking 2 points randomly on the stick at the same time
+  x <- runif(n = 2, min = 0, max = 1) 
+  a <- min(x) # first point
+  b <- max(x) # second point
+  # pieces of the stick with their respective length
+  pieces <- c(a, b-a, 1-b)
+  cond1 <- sum(pieces[c(1,2)]) > pieces[3] # condition # 1
+  cond2 <- sum(pieces[c(1,3)]) > pieces[2] # condition # 2
+  cond3 <- sum(pieces[c(3,2)]) > pieces[1] # condition # 3
+  combine_conds <- ifelse(cond1 & cond2 & cond3, 1, 0) # if all 3 conditions are satisfied
+  return(combine_conds)
+}
+
+cnt <- c()
+total <- 10 #1000
+for(k in 1:total) cnt = c(cnt, index_Score())
+df <- setNames(data.frame(1:total, rep(0, total)), c("Incrmt","Probs"))
+for (i in 1:total)  df$Probs[i] <- sum(cnt[1:i])/i
+```
+
+
+
+
+
+## Create snaphots
+
+```{r}
+for(i in 1:total) {
+  sub_df <- subset(df, df$Incrmt <= i)
+  simul_plot <- qplot(Incrmt, Probs, data = sub_df, geom = "path") + 
+    labs(x = "iterations", y = "Probabilities", title = "Monte Carlo Simulation") + ylim(c(0,0.4)) + 
+    geom_hline(yintercept = 0.25, colour = "red", linetype = "longdash")
+  ggsave(plot = simul_plot, filename = paste(sprintf("images/brokenstick_%02d",i),".png", sep = ""), limitsize = FALSE)
+  rm(sub_df)
+  #dev.off() #uncomment in windows
+}
+```
+
+## Pack in a video
+
+Run from the shell:
+"ffmpeg -r 10 -pattern_type glob -i '*.png' -b:v 20M BrokenStick_video.mp4"
+
+### Credits:
+
+[Rene Essomba.](http://datascienceplus.com/creating-an-animation-using-r)
